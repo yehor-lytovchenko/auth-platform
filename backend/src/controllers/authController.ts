@@ -91,6 +91,21 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    if (user.status === UserStatus.DELETED) {
+      res.status(403).json({ error: "Account is deleted" });
+      return;
+    }
+
+    if (user.status === UserStatus.BLOCKED || user.blocked) {
+      res.status(403).json({ error: "Account is blocked" });
+      return;
+    }
+
+    if (user.status === UserStatus.PENDING_VERIFICATION) {
+      res.status(403).json({ error: "Please verify your email before logging in" });
+      return;
+    }
+
     if (user.twoFaEnabled) {
       if (!twoFaCode) {
         res.status(400).json({ error: "2FA code required" });

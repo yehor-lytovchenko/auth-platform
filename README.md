@@ -226,6 +226,107 @@ docker-compose down -v
 - Check `VITE_API_URL` in frontend environment (default: `http://localhost:3000/api`)
 - Ensure both services are on the same Docker network
 
+## Technology Choices and Justification
+
+### Backend Technologies
+
+#### Express.js
+**Problem:** Need a lightweight, flexible REST API framework for authentication platform  
+**Solution:** Express is minimalist, has huge ecosystem, perfect for microservices architecture. Provides excellent middleware support for authentication, rate limiting, and security headers. NestJS would be overkill for this task.
+
+#### Prisma ORM
+**Problem:** Raw SQL is error-prone, migration management is complex, need type-safe database access  
+**Solution:** Prisma provides type-safe database access, automatic migrations, and excellent TypeScript integration. Better developer experience than TypeORM or MikroORM for this use case. Ensures database schema matches TypeScript types at compile time.
+
+#### PostgreSQL
+**Problem:** Need reliable, ACID-compliant database for sensitive user data  
+**Solution:** PostgreSQL is production-ready, supports complex queries, has excellent performance, and provides strong data integrity guarantees. Perfect for storing user credentials, sessions, and authentication tokens.
+
+#### bcrypt
+**Problem:** Plain text passwords = security disaster  
+**Solution:** bcrypt is industry standard for password hashing. Uses adaptive hashing algorithm that automatically increases computational cost, making brute-force attacks impractical even as hardware improves.
+
+#### JWT (jsonwebtoken)
+**Problem:** Need stateless authentication for scalability across multiple servers  
+**Solution:** JWT tokens are self-contained, work across multiple servers without shared session storage, support refresh token rotation. Enables horizontal scaling and multi-device sessions.
+
+#### Helmet
+**Problem:** Default Express is vulnerable to common web attacks (XSS, clickjacking, MIME-sniffing)  
+**Solution:** Helmet sets 15+ HTTP security headers (CSP, HSTS, X-Frame-Options, etc.) protecting against XSS, clickjacking, MIME-sniffing attacks. Essential for production security.
+
+#### express-rate-limit
+**Problem:** Brute-force attacks and DDoS can overwhelm the server, especially from multiple geolocations  
+**Solution:** Rate limiting blocks excessive requests from single IP. 5 login attempts per 15 min prevents password guessing. 100 requests/15min prevents resource exhaustion. For production, can be extended with Redis for distributed rate limiting across multiple servers.
+
+#### speakeasy (2FA)
+**Problem:** Passwords alone can be stolen/phished  
+**Solution:** TOTP-based 2FA adds second factor (something you have - phone). Even with stolen password, attacker can't login without time-based code from Google Authenticator. Industry standard for two-factor authentication.
+
+#### nodemailer + handlebars
+**Problem:** Need to send verification emails with professional templates  
+**Solution:** Nodemailer is the most popular Node.js email library, supports all SMTP providers. Handlebars provides clean templates with variables, separates markup from logic, simplifies changing email design.
+
+### Frontend Technologies
+
+#### Vue.js 3
+**Problem:** Need a reactive, component-based UI framework  
+**Solution:** Vue 3 offers Composition API for better code organization, excellent TypeScript support, and smaller bundle size than Vue 2. Easier learning curve than React for this project scale. Progressive framework allows incremental adoption.
+
+#### PrimeVue
+**Problem:** Need professional UI components quickly without building from scratch  
+**Solution:** Comprehensive component library (80+ components) with built-in accessibility, theming system, and responsive design. Saves development time, ensures consistent UI/UX, and meets requirement for component library usage.
+
+#### TypeScript
+**Problem:** JavaScript's dynamic typing causes runtime errors, difficult to maintain large codebases  
+**Solution:** Compile-time type checking, better IDE support, prevents common bugs. Mandatory for assignment requirements. Ensures type safety across frontend and backend.
+
+#### Vite
+**Problem:** Slow development server and build times with traditional bundlers  
+**Solution:** Vite provides instant server start, lightning-fast HMR (Hot Module Replacement), and optimized production builds. Native ES modules in development. Significantly improves developer experience.
+
+#### Pinia
+**Problem:** Need centralized state management for authentication tokens and user data  
+**Solution:** Official Vue state management (replaces Vuex). Simpler API, better TypeScript inference, modular store design. Perfect for auth token management and session state.
+
+#### Axios
+**Problem:** Need HTTP client with request/response transformation and interceptors  
+**Solution:** Interceptors allow automatic token injection and refresh logic. Better error handling than fetch API. Widely adopted standard for Vue apps. Enables seamless token refresh on 401 errors.
+
+### Infrastructure Technologies
+
+#### Docker + Docker Compose
+**Problem:** Need consistent development and production environments, easy deployment  
+**Solution:** Docker containerizes all services (PostgreSQL, backend, frontend). Docker Compose orchestrates multi-container setup. Ensures "works on my machine" problem is eliminated. Simplifies deployment and scaling.
+
+#### Docker Network
+**Problem:** Services need to communicate securely within containerized environment  
+**Solution:** Docker bridge network isolates services while allowing inter-service communication. Backend can connect to PostgreSQL using service name instead of IP address.
+
+## Security Measures
+
+### Protection Against Hacker Attacks
+
+1. **Password Security**: bcrypt hashing with salt rounds prevents rainbow table attacks
+2. **JWT Tokens**: Short-lived access tokens (15 min) limit exposure window
+3. **Helmet**: HTTP security headers protect against XSS, clickjacking, MIME-sniffing
+4. **Input Validation**: Server-side validation prevents injection attacks
+5. **2FA**: TOTP-based two-factor authentication adds additional security layer
+6. **Session Management**: Refresh tokens stored in database with device/IP tracking
+
+### Protection Against DDoS Attacks
+
+1. **Rate Limiting**: 
+   - 5 login/register attempts per 15 minutes (prevents brute-force)
+   - 100 general requests per 15 minutes (prevents resource exhaustion)
+2. **Express Rate Limit**: In-memory rate limiting for single-server deployments
+3. **Future Enhancement**: Can be extended with Redis for distributed rate limiting across multiple servers/geolocations
+
+**Note:** For production deployment with high traffic, consider:
+- Redis-based distributed rate limiting
+- CDN (Cloudflare) for DDoS protection
+- Load balancer with rate limiting
+- IP-based blocking and geolocation filtering
+
 ## License
 
 ISC
